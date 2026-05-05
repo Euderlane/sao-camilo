@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agendamento Escolar | Escola São Camilo</title>
+  <style>
+    *{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+    body{margin:0;background:#eef3f8;color:#1f2937}
+    header{background:linear-gradient(135deg,#050505,#003b73);color:white;padding:34px 18px;text-align:center}
+    .logo{max-width:280px;width:80%;margin-bottom:18px}
+    header h1{margin:0;font-size:32px}
+    header p{margin:10px auto 0;max-width:760px;font-size:16px;line-height:1.5}
+    nav{display:flex;justify-content:center;gap:12px;background:white;padding:14px;box-shadow:0 4px 14px rgba(0,0,0,.08);position:sticky;top:0;z-index:10}
+    nav button{width:auto;margin:0;padding:11px 18px;border-radius:999px;background:#e8f2fb;color:#003b73;border:1px solid #b7d5ee}
+    nav button.active{background:#003b73;color:white}
+    main{max-width:1120px;margin:28px auto;padding:0 16px 40px}
+    .card{background:white;border-radius:18px;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,.08);margin-bottom:24px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+    h2,h3{color:#003b73;margin-top:0}
+    label{display:block;margin-top:14px;font-weight:700;font-size:14px}
+    input,select,textarea,button{width:100%;padding:12px;margin-top:6px;border-radius:10px;border:1px solid #cbd5e1;font-size:15px}
+    textarea{min-height:80px;resize:vertical}
+    button{background:#003b73;color:white;border:none;font-weight:700;cursor:pointer;transition:.2s;margin-top:18px}
+    button:hover{filter:brightness(.92)}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .btn-secundario{background:#e8f2fb;color:#003b73;border:1px solid #b7d5ee}
+    .btn-danger{background:#dc2626}
+    .btn-small{padding:8px 10px;font-size:13px;margin:0}
+    .horarios{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:10px;margin-top:14px}
+    .horario{padding:11px 8px;border-radius:11px;border:1px solid #0b76bd;text-align:center;cursor:pointer;background:#eef7ff;color:#003b73;font-weight:700;user-select:none}
+    .horario.selecionado{background:#003b73;color:white}
+    .horario.ocupado{background:#e5e7eb;color:#6b7280;border-color:#cbd5e1;cursor:not-allowed;text-decoration:line-through}
+    .mensagem{margin-top:16px;padding:14px;border-radius:12px;display:none;font-weight:700;line-height:1.4}
+    .sucesso{background:#dcfce7;color:#166534;display:block}
+    .erro{background:#fee2e2;color:#991b1b;display:block}
+    .info{background:#dbeafe;color:#1e40af;display:block}
+    .aviso{background:#fff7ed;color:#9a3412;padding:14px;border-radius:12px;margin:14px 0;line-height:1.5;font-size:14px}
+    .oculto{display:none}
+    table{width:100%;border-collapse:collapse;margin-top:14px;font-size:14px}
+    th,td{border-bottom:1px solid #e5e7eb;padding:10px;text-align:left;vertical-align:top}
+    th{background:#eef7ff;color:#003b73}
+    .tabela-wrap{overflow-x:auto}
+    .resumo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:18px 0}
+    .resumo-card{background:#eef7ff;border-radius:14px;padding:16px;color:#003b73;font-weight:700}
+    .resumo-card span{display:block;font-size:26px;margin-top:6px}
+    .loading-horarios{color:#003b73;font-weight:700;margin-top:12px;display:flex;align-items:center;gap:8px}
+    .linha-data{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #e5e7eb}
+    .tag-data{background:#eef7ff;color:#003b73;border:1px solid #b7d5ee;border-radius:999px;padding:6px 10px;font-weight:700}
+    .spinner{width:18px;height:18px;border:3px solid #b7d5ee;border-top-color:#003b73;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    footer{text-align:center;color:#64748b;font-size:13px;padding:18px}
+    @media(max-width:760px){.grid,.resumo{grid-template-columns:1fr}header h1{font-size:25px}nav{flex-wrap:wrap}}
+  </style>
+</head>
+<body>
+  <header>
+    <img src="logo.png" alt="Logo Escola São Camilo" class="logo" />
+    <h1>Agendamento de Atendimento com Professores</h1>
+    <p>Escolha a turma do aluno, selecione um horário disponível e confirme o atendimento. Após a confirmação, o horário será bloqueado automaticamente.</p>
+  </header>
+
+  <nav>
+    <button id="btnPais" class="active" onclick="mostrarTela('pais')">Agendamento dos Pais</button>
+    <button id="btnAdmin" onclick="mostrarTela('admin')">Área Administrativa</button>
+  </nav>
+
+  <main>
+    <section id="telaPais" class="card">
+      <h2 id="tituloAgendamento">Realizar Agendamento</h2>
+      <div class="aviso" id="avisoDatas">Carregando datas disponíveis...</div>
+
+      <div class="grid">
+        <div><label>Nome do responsável</label><input type="text" id="responsavel" placeholder="Ex.: Maria Silva" /></div>
+        <div><label>Telefone / WhatsApp</label><input type="text" id="telefone" placeholder="Ex.: (27) 99999-9999" /></div>
+        <div><label>Nome do aluno</label><input type="text" id="aluno" placeholder="Ex.: João Silva" /></div>
+        <div><label>Data do atendimento</label><select id="dataAtendimento" onchange="gerarHorarios()"><option value="">Carregando datas...</option></select></div>
+        <div><label>Turno</label><select id="turno" onchange="atualizarTurmas()"><option value="">Selecione o turno</option><option value="Matutino">Matutino</option><option value="Vespertino">Vespertino</option></select></div>
+        <div><label>Turma</label><select id="turma" onchange="gerarHorarios()"><option value="">Selecione uma turma</option></select></div>
+      </div>
+
+      <label>Observação, caso necessário</label>
+      <textarea id="observacao" placeholder="Campo opcional"></textarea>
+
+      <label>Horários disponíveis</label>
+      <div id="horarios" class="horarios"></div>
+
+      <button id="btnConfirmar" onclick="confirmarAgendamento()">Confirmar Agendamento</button>
+      <div id="mensagem" class="mensagem"></div>
+    </section>
+
+    <section id="telaAdmin" class="card oculto">
+      <h2>Área Administrativa</h2>
+      <p>Acesso restrito para visualizar, pesquisar, exportar, excluir agendamentos e controlar quais datas ficam disponíveis para os pais.</p>
+
+      <div id="loginAdmin">
+        <label>Senha do administrador</label>
+        <input type="password" id="senhaAdmin" placeholder="Digite a senha" onkeydown="if(event.key==='Enter')acessarAdmin()" />
+        <button onclick="acessarAdmin()">Entrar</button>
+      </div>
+
+      <div id="painelAdmin" class="oculto">
+        <div class="resumo">
+          <div class="resumo-card">Total <span id="totalAgendamentos">0</span></div>
+          <div class="resumo-card">Matutino <span id="totalMatutino">0</span></div>
+          <div class="resumo-card">Vespertino <span id="totalVespertino">0</span></div>
+          <div class="resumo-card">Datas liberadas <span id="totalDatas">0</span></div>
+        </div>
+
+        <h3>Alterar senha do administrador</h3>
+        <div class="aviso">Use esta área para trocar a senha de acesso ao modo administrador. A nova senha ficará salva no banco de dados.</div>
+        <div class="grid">
+          <div><label>Nova senha</label><input type="password" id="novaSenhaAdmin" placeholder="Mínimo de 6 caracteres" /></div>
+          <div><label>Confirmar nova senha</label><input type="password" id="confirmarSenhaAdmin" placeholder="Digite novamente" /></div>
+        </div>
+        <button class="btn-secundario" onclick="alterarSenhaAdmin()">Alterar senha</button>
+
+        <h3>Datas disponíveis para os pais</h3>
+        <div class="aviso">Somente as datas listadas abaixo aparecerão para os pais. Para deixar apenas um dia aberto, mantenha apenas esse dia nesta lista.</div>
+        <div class="grid">
+          <div><label>Nova data para liberar</label><input type="date" id="novaDataLiberada" /></div>
+          <div><label>&nbsp;</label><button class="btn-secundario" onclick="adicionarDataLiberada()">Liberar esta data</button></div>
+        </div>
+        <div id="listaDatasLiberadas"><p>Carregando datas...</p></div>
+
+        <h3>Filtros</h3>
+        <div class="grid">
+          <div><label>Filtrar por turma</label><select id="filtroTurma" onchange="atualizarPainelAdmin()"><option value="">Todas as turmas</option></select></div>
+          <div><label>Filtrar por turno</label><select id="filtroTurno" onchange="atualizarPainelAdmin()"><option value="">Todos</option><option value="Matutino">Matutino</option><option value="Vespertino">Vespertino</option></select></div>
+        </div>
+
+        <button class="btn-secundario" onclick="exportarCSV()">⬇ Exportar em Excel/CSV</button>
+        <button class="btn-danger" onclick="limparTodosAgendamentos()">🗑 Apagar Todos os Agendamentos</button>
+
+        <h3>Agendamentos Realizados</h3>
+        <div class="tabela-wrap" id="listaAdmin"><p>Carregando...</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Sistema de agendamento escolar | Escola São Camilo de Lellis</footer>
+
+  <script>
+    const DATA_PADRAO = "2026-05-20";
+    const API         = "/api/agendamentos";
+    const API_DATAS   = "/api/datas-liberadas";
+    const API_ADMIN   = "/api/admin";
+    let horarioSelecionado = "";
+    let agendamentosCache  = null; // cache para evitar chamadas desnecessárias
+    let datasLiberadasCache = null;
+    let adminSenhaAtual = "";
+
+    const turmas = {
+      Matutino:   ["GRUPO 2A","GRUPO 3A","GRUPO 4A","GRUPO 5A","1º Ano A","1º Ano B","2º Ano A","2º Ano B","3º Ano A","3º Ano B","4º Ano A","4º Ano B","5º Ano A"],
+      Vespertino: ["GRUPO 2C","GRUPO 2D","GRUPO 3C","GRUPO 3D","GRUPO 4C","GRUPO 4D","GRUPO 5C","GRUPO 5D","1º Ano C","1º Ano D","1º Ano E","2º Ano C","2º Ano D","2º Ano E","3º Ano C","3º Ano D","3º Ano E","4º Ano C","4º Ano D","5º Ano C","5º Ano D"]
+    };
+
+    // ── API ───────────────────────────────────────────────────
+    async function obterAgendamentos(forcar = false) {
+      if (agendamentosCache && !forcar) return agendamentosCache;
+      const res  = await fetch(API);
+      const data = await res.json();
+      agendamentosCache = Array.isArray(data) ? data : [];
+      return agendamentosCache;
+    }
+
+    async function inserirAgendamento(ag) {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ag)
+      });
+      if (res.status === 409) throw new Error("OCUPADO");
+      if (!res.ok) throw new Error("Erro ao salvar");
+      agendamentosCache = null; // limpa cache
+      return res.json();
+    }
+
+    async function deletarAgendamento(id) {
+      await fetch(`${API}?id=${id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senhaAdmin: adminSenhaAtual })
+      });
+      agendamentosCache = null;
+    }
+
+    async function deletarTodos() {
+      await fetch(`${API}?id=all`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senhaAdmin: adminSenhaAtual })
+      });
+      agendamentosCache = null;
+    }
+
+    async function obterDatasLiberadas(forcar = false) {
+      if (datasLiberadasCache && !forcar) return datasLiberadasCache;
+      const res = await fetch(API_DATAS);
+      const data = await res.json();
+      datasLiberadasCache = Array.isArray(data) ? data.map(d => d.data).sort() : [];
+      return datasLiberadasCache;
+    }
+
+    async function salvarDataLiberada(data) {
+      const res = await fetch(API_DATAS, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data, senhaAdmin: adminSenhaAtual })
+      });
+      if (!res.ok) throw new Error("Erro ao liberar data");
+      datasLiberadasCache = null;
+    }
+
+    async function removerDataLiberada(data) {
+      const res = await fetch(`${API_DATAS}?data=${encodeURIComponent(data)}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senhaAdmin: adminSenhaAtual })
+      });
+      if (!res.ok) throw new Error("Erro ao bloquear data");
+      datasLiberadasCache = null;
+    }
+
+    // ── Inicialização ─────────────────────────────────────────
+    async function iniciarSistema() {
+      preencherFiltroTurmas();
+      await carregarDatasPais();
+    }
+
+    function mostrarTela(tela) {
+      document.getElementById("telaPais").classList.toggle("oculto", tela !== "pais");
+      document.getElementById("telaAdmin").classList.toggle("oculto", tela !== "admin");
+      document.getElementById("btnPais").classList.toggle("active", tela === "pais");
+      document.getElementById("btnAdmin").classList.toggle("active", tela === "admin");
+    }
+
+    function preencherFiltroTurmas() {
+      const filtro = document.getElementById("filtroTurma");
+      [...turmas.Matutino, ...turmas.Vespertino].forEach(t => {
+        const o = document.createElement("option");
+        o.value = t; o.textContent = t;
+        filtro.appendChild(o);
+      });
+    }
+
+    // ── Turmas e horários ─────────────────────────────────────
+    function atualizarTurmas() {
+      const turno = document.getElementById("turno").value;
+      const sel   = document.getElementById("turma");
+      sel.innerHTML = '<option value="">Selecione uma turma</option>';
+      document.getElementById("horarios").innerHTML = "";
+      horarioSelecionado = "";
+      if (!turno) return;
+      turmas[turno].forEach(t => {
+        const o = document.createElement("option");
+        o.value = t; o.textContent = t;
+        sel.appendChild(o);
+      });
+    }
+
+    function turmaUsaSeteMinutos(turma) {
+      return turma.includes("4º Ano") || turma.includes("5º Ano");
+    }
+
+    function toMin(h) { const [hh, m] = h.split(":").map(Number); return hh * 60 + m; }
+    function toHora(min) { return `${String(Math.floor(min/60)).padStart(2,"0")}:${String(min%60).padStart(2,"0")}`; }
+
+    function gerarListaHorarios(inicio, fim, cafeI, cafeF, min) {
+      const lista = [];
+      let atual = toMin(inicio);
+      const limite = toMin(fim), pI = toMin(cafeI), pF = toMin(cafeF);
+      while (atual + min <= limite) {
+        if (!(atual < pF && atual + min > pI)) lista.push(toHora(atual));
+        atual += min;
+      }
+      return lista;
+    }
+
+    function dataSelecionada() {
+      return document.getElementById("dataAtendimento").value;
+    }
+
+    function formatarDataBR(data) {
+      if (!data) return "";
+      const [ano, mes, dia] = data.split("-");
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    async function carregarDatasPais() {
+      const sel = document.getElementById("dataAtendimento");
+      const aviso = document.getElementById("avisoDatas");
+      const titulo = document.getElementById("tituloAgendamento");
+      const datas = await obterDatasLiberadas(true);
+      sel.innerHTML = "";
+      if (datas.length === 0) {
+        sel.innerHTML = '<option value="">Nenhuma data liberada</option>';
+        aviso.textContent = "No momento, não há datas liberadas para agendamento. Aguarde a escola liberar uma nova data.";
+        document.getElementById("horarios").innerHTML = '<p class="aviso">Nenhuma data disponível.</p>';
+        titulo.textContent = "Realizar Agendamento";
+        return;
+      }
+      datas.forEach(data => {
+        const o = document.createElement("option");
+        o.value = data;
+        o.textContent = formatarDataBR(data);
+        sel.appendChild(o);
+      });
+      if (datas.includes(DATA_PADRAO)) sel.value = DATA_PADRAO;
+      aviso.textContent = `Escolha uma das datas liberadas pela escola. Horários já reservados ficam bloqueados automaticamente.`;
+      titulo.textContent = `Realizar Agendamento — ${formatarDataBR(sel.value)}`;
+    }
+
+    async function gerarHorarios() {
+      const turno = document.getElementById("turno").value;
+      const turma = document.getElementById("turma").value;
+      const data  = dataSelecionada();
+      const cont  = document.getElementById("horarios");
+      document.getElementById("tituloAgendamento").textContent = data ? `Realizar Agendamento — ${formatarDataBR(data)}` : "Realizar Agendamento";
+      cont.innerHTML = "";
+      horarioSelecionado = "";
+
+      if (!data) {
+        cont.innerHTML = '<p class="aviso">Nenhuma data está liberada para agendamento.</p>';
+        return;
+      }
+      if (!turno || !turma) {
+        cont.innerHTML = '<p class="aviso">Selecione a data, o turno e a turma para visualizar os horários.</p>';
+        return;
+      }
+
+      cont.innerHTML = '<div class="loading-horarios"><span class="spinner"></span> Carregando horários...</div>';
+
+      const minutos     = turmaUsaSeteMinutos(turma) ? 7 : 10;
+      const agendamentos = await obterAgendamentos();
+      const horarios    = turno === "Matutino"
+        ? gerarListaHorarios("07:00","11:00","08:30","08:50",minutos)
+        : gerarListaHorarios("13:00","17:00","14:30","14:50",minutos);
+
+      cont.innerHTML = "";
+      horarios.forEach(horario => {
+        const ocupado = agendamentos.some(a =>
+          a.data === data && a.turno === turno && a.turma === turma && a.horario === horario
+        );
+        const div = document.createElement("div");
+        div.textContent = horario;
+        div.className   = ocupado ? "horario ocupado" : "horario";
+        if (!ocupado) {
+          div.onclick = () => {
+            document.querySelectorAll(".horario").forEach(el => el.classList.remove("selecionado"));
+            div.classList.add("selecionado");
+            horarioSelecionado = horario;
+          };
+        }
+        cont.appendChild(div);
+      });
+    }
+
+    // ── Confirmar agendamento ─────────────────────────────────
+    async function confirmarAgendamento() {
+      const responsavel = limpar(document.getElementById("responsavel").value);
+      const telefone    = limpar(document.getElementById("telefone").value);
+      const aluno       = limpar(document.getElementById("aluno").value);
+      const turno       = document.getElementById("turno").value;
+      const turma       = document.getElementById("turma").value;
+      const observacao  = limpar(document.getElementById("observacao").value);
+      const data        = dataSelecionada();
+
+      if (!responsavel || !telefone || !aluno || !data || !turno || !turma || !horarioSelecionado) {
+        mostrarMsg("Preencha todos os campos obrigatórios e selecione um horário.", "erro");
+        return;
+      }
+
+      // Verificar duplicidade de aluno
+      const agendamentos = await obterAgendamentos();
+      const alunoJa = agendamentos.some(a =>
+        a.data === data && normalizar(a.aluno) === normalizar(aluno)
+      );
+      if (alunoJa && !confirm("Já existe um agendamento para este aluno nesta data. Deseja continuar mesmo assim?")) return;
+
+      const btn = document.getElementById("btnConfirmar");
+      btn.disabled = true;
+      mostrarMsg("Salvando agendamento...", "info");
+
+      try {
+        await inserirAgendamento({ responsavel, telefone, aluno, data, turno, turma, horario: horarioSelecionado, observacao });
+        mostrarMsg(`✅ Agendamento confirmado! ${aluno} — ${turma} — ${formatarDataBR(data)} às ${horarioSelecionado}.`, "sucesso");
+        document.getElementById("responsavel").value = "";
+        document.getElementById("telefone").value    = "";
+        document.getElementById("aluno").value       = "";
+        document.getElementById("observacao").value  = "";
+        horarioSelecionado = "";
+        gerarHorarios();
+      } catch (err) {
+        if (err.message === "OCUPADO") {
+          mostrarMsg("Este horário acabou de ser reservado por outra família. Por favor, escolha outro.", "erro");
+          gerarHorarios();
+        } else {
+          mostrarMsg("Erro ao salvar. Verifique sua conexão e tente novamente.", "erro");
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ── Área Admin ────────────────────────────────────────────
+    async function acessarAdmin() {
+      const senha = document.getElementById("senhaAdmin").value;
+      if (!senha) { alert("Digite a senha do administrador."); return; }
+
+      try {
+        const res = await fetch(API_ADMIN, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ acao: "login", senha })
+        });
+        if (!res.ok) {
+          alert("Senha incorreta.");
+          return;
+        }
+        adminSenhaAtual = senha;
+        document.getElementById("loginAdmin").classList.add("oculto");
+        document.getElementById("painelAdmin").classList.remove("oculto");
+        atualizarPainelAdmin();
+      } catch (err) {
+        alert("Não foi possível validar a senha. Verifique o banco de dados/Netlify Functions.");
+      }
+    }
+
+    async function alterarSenhaAdmin() {
+      const novaSenha = document.getElementById("novaSenhaAdmin").value;
+      const confirmar = document.getElementById("confirmarSenhaAdmin").value;
+      if (novaSenha.length < 6) { alert("A nova senha precisa ter pelo menos 6 caracteres."); return; }
+      if (novaSenha !== confirmar) { alert("As senhas não conferem."); return; }
+
+      try {
+        const res = await fetch(API_ADMIN, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ acao: "alterar-senha", senhaAtual: adminSenhaAtual, novaSenha })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Erro ao alterar senha");
+        adminSenhaAtual = novaSenha;
+        document.getElementById("senhaAdmin").value = novaSenha;
+        document.getElementById("novaSenhaAdmin").value = "";
+        document.getElementById("confirmarSenhaAdmin").value = "";
+        alert("Senha alterada com sucesso.");
+      } catch (err) {
+        alert(err.message || "Erro ao alterar senha.");
+      }
+    }
+
+    async function atualizarPainelAdmin() {
+      const painel = document.getElementById("listaAdmin");
+      painel.innerHTML = '<div class="loading-horarios"><span class="spinner"></span> Carregando...</div>';
+
+      const filtroTurma = document.getElementById("filtroTurma")?.value || "";
+      const filtroTurno = document.getElementById("filtroTurno")?.value || "";
+      const [agendamentos, datasLiberadas] = await Promise.all([
+        obterAgendamentos(true),
+        obterDatasLiberadas(true)
+      ]);
+      agendamentos.sort((a,b) => `${a.data} ${a.horario}`.localeCompare(`${b.data} ${b.horario}`));
+
+      document.getElementById("totalAgendamentos").textContent = agendamentos.length;
+      document.getElementById("totalMatutino").textContent     = agendamentos.filter(a => a.turno === "Matutino").length;
+      document.getElementById("totalVespertino").textContent   = agendamentos.filter(a => a.turno === "Vespertino").length;
+      document.getElementById("totalDatas").textContent        = datasLiberadas.length;
+      renderizarDatasLiberadas(datasLiberadas);
+      await carregarDatasPais();
+
+      const filtrados = agendamentos.filter(a =>
+        (!filtroTurma || a.turma === filtroTurma) && (!filtroTurno || a.turno === filtroTurno)
+      );
+
+      if (filtrados.length === 0) { painel.innerHTML = "<p>Nenhum agendamento encontrado.</p>"; return; }
+
+      painel.innerHTML = `<table><thead><tr>
+        <th>Data</th><th>Horário</th><th>Turno</th><th>Turma</th><th>Aluno</th>
+        <th>Responsável</th><th>Telefone</th><th>Observação</th><th>Ação</th>
+      </tr></thead><tbody>
+        ${filtrados.map(a => `<tr>
+          <td>${formatarDataBR(a.data)}</td><td>${escapeHTML(a.horario)}</td><td>${escapeHTML(a.turno)}</td><td>${escapeHTML(a.turma)}</td>
+          <td>${escapeHTML(a.aluno)}</td><td>${escapeHTML(a.responsavel)}</td><td>${escapeHTML(a.telefone)}</td>
+          <td>${escapeHTML(a.observacao || "–")}</td>
+          <td><button class="btn-danger btn-small" onclick="excluirAgendamento(${a.id})">Excluir</button></td>
+        </tr>`).join("")}
+      </tbody></table>`;
+    }
+
+    function renderizarDatasLiberadas(datas) {
+      const box = document.getElementById("listaDatasLiberadas");
+      if (!datas.length) {
+        box.innerHTML = '<p class="aviso">Nenhuma data liberada. Os pais não conseguirão agendar até você liberar uma data.</p>';
+        return;
+      }
+      box.innerHTML = datas.map(data => `
+        <div class="linha-data">
+          <span class="tag-data">${formatarDataBR(data)}</span>
+          <button class="btn-danger btn-small" onclick="bloquearDataLiberada('${data}')">Bloquear data</button>
+        </div>
+      `).join("");
+    }
+
+    async function adicionarDataLiberada() {
+      const data = document.getElementById("novaDataLiberada").value;
+      if (!data) { alert("Escolha uma data para liberar."); return; }
+      await salvarDataLiberada(data);
+      document.getElementById("novaDataLiberada").value = "";
+      agendamentosCache = null;
+      await atualizarPainelAdmin();
+      gerarHorarios();
+    }
+
+    async function bloquearDataLiberada(data) {
+      const ags = await obterAgendamentos(true);
+      const qtd = ags.filter(a => a.data === data).length;
+      const aviso = qtd > 0
+        ? `Esta data possui ${qtd} agendamento(s). Bloquear a data impede novos agendamentos, mas não apaga os já feitos. Deseja continuar?`
+        : "Deseja bloquear esta data para novos agendamentos?";
+      if (!confirm(aviso)) return;
+      await removerDataLiberada(data);
+      await atualizarPainelAdmin();
+      gerarHorarios();
+    }
+
+    async function excluirAgendamento(id) {
+      if (!confirm("Deseja realmente excluir este agendamento?")) return;
+      await deletarAgendamento(id);
+      atualizarPainelAdmin();
+      agendamentosCache = null;
+      gerarHorarios();
+    }
+
+    async function limparTodosAgendamentos() {
+      if (!confirm("Atenção: isso apagará TODOS os agendamentos permanentemente. Deseja continuar?")) return;
+      await deletarTodos();
+      atualizarPainelAdmin();
+      gerarHorarios();
+    }
+
+    async function exportarCSV() {
+      const agendamentos = await obterAgendamentos(true);
+      if (agendamentos.length === 0) { alert("Não há agendamentos para exportar."); return; }
+      const cab = ["Data","Horario","Turno","Turma","Aluno","Responsavel","Telefone","Observacao","Criado em"];
+      const linhas = agendamentos.map(a => [
+        formatarDataBR(a.data), a.horario, a.turno, a.turma, a.aluno,
+        a.responsavel, a.telefone, a.observacao || "", a.criado_em || ""
+      ]);
+      const csv = [cab, ...linhas]
+        .map(l => l.map(c => `"${String(c).replace(/"/g,'""')}"`).join(";"))
+        .join("\n");
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "agendamentos-sao-camilo.csv";
+      link.click();
+    }
+
+    // ── Utilitários ───────────────────────────────────────────
+    function limpar(t) { return t.trim().replace(/</g,"").replace(/>/g,""); }
+    function normalizar(t) { return t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim(); }
+    function escapeHTML(t) {
+      return String(t).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+    }
+    function mostrarMsg(texto, tipo) {
+      const m = document.getElementById("mensagem");
+      m.textContent = texto;
+      m.className = `mensagem ${tipo}`;
+    }
+
+    iniciarSistema();
+  </script>
+</body>
+</html>

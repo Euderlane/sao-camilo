@@ -1,0 +1,7 @@
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Content-Type = "application/json"

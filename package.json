@@ -1,0 +1,8 @@
+{
+  "name": "agendamento-sao-camilo",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@netlify/database": "^1.0.0"
+  }
+}
