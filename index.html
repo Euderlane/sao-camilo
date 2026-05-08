@@ -416,6 +416,10 @@ select option{background:var(--surface-2)}
       <div class="sfbar">
         <div class="sbox"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="a-srch" placeholder="Buscar por item ou usuário..."></div>
         <select id="a-sflt" class="sflt"><option value="all">Todos os status</option><option value="recebido">Recebido</option><option value="em_analise">Em Análise</option><option value="aprovado">Aprovado</option><option value="em_compra">Em Compra</option><option value="comprado">Comprado</option><option value="em_transporte">Em Transporte</option><option value="entregue">Entregue</option><option value="recusado">Recusado</option><option value="cancelado">Cancelado</option></select>
+        <button class="btn btn-g" onclick="exportPDF()" title="Exportar PDF">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Exportar PDF
+        </button>
       </div>
       <div id="a-orders-tbl"><div class="ldg"><div class="spin"></div><p>Carregando...</p></div></div>
     </div>
@@ -629,6 +633,11 @@ function loadHist(){
   const container=document.getElementById('list-hist');
   if(!container)return;
   if(!me){container.innerHTML='<div class="empty"><p>Faça login para ver o histórico.</p></div>';return;}
+  // Use cached orders if available (already loaded by onSnapshot)
+  if(userOrdersCache&&userOrdersCache.length>0){
+    renderOrders(userOrdersCache,'list-hist','all');
+    return;
+  }
   container.innerHTML='<div class="ldg"><div class="spin"></div><p>Carregando...</p></div>';
   const q=query(collection(db,'orders'),where('userId','==',me.uid),orderBy('createdAt','desc'));
   getDocs(q).then(function(s){
@@ -639,8 +648,13 @@ function loadHist(){
     }
     renderOrders(orders,'list-hist','all');
   }).catch(function(e){
-    console.error(e);
-    container.innerHTML='<div class="empty"><p>Erro ao carregar histórico. Tente novamente.</p></div>';
+    console.error('Hist error:',e);
+    // Fallback: use cached
+    if(userOrdersCache&&userOrdersCache.length>0){
+      renderOrders(userOrdersCache,'list-hist','all');
+    } else {
+      container.innerHTML='<div class="empty"><p>Nenhum pedido encontrado.</p></div>';
+    }
   });
 }
 
@@ -1024,6 +1038,73 @@ async function loadDash(){
   const mx=Math.max(...Object.values(cnt),1);
   document.getElementById('schart').innerHTML=Object.entries(SC).map(([k,v])=>`<div class="sbi"><span class="sbl">${v.l}</span><div class="sbt"><div class="sbf" style="width:${(cnt[k]/mx)*100}%;background:${v.c}"></div></div><span class="sbc">${cnt[k]}</span></div>`).join('');
 }
+
+window.exportPDF=function(){
+  var srch=document.getElementById('a-srch')?.value.toLowerCase()||'';
+  var sflt=document.getElementById('a-sflt')?.value||'all';
+  var list=allOrders;
+  if(srch)list=list.filter(function(o){return (o.itemName||'').toLowerCase().includes(srch)||(o.userName||'').toLowerCase().includes(srch);});
+  if(sflt!=='all')list=list.filter(function(o){return o.status===sflt;});
+  if(!list.length){toast('Nenhum pedido para exportar.','e');return;}
+
+  var statusLabel={recebido:'Recebido',em_analise:'Em Análise',aprovado:'Aprovado',em_compra:'Em Compra',comprado:'Comprado',em_transporte:'Em Transporte',entregue:'Entregue',recusado:'Recusado',cancelado:'Cancelado'};
+
+  var rows=list.map(function(o){
+    var itens='';
+    if(o.items&&o.items.length>1){
+      itens=o.items.map(function(it,i){return (i+1)+'. '+it.name+' (x'+it.qty+')'+(it.desc?' - '+it.desc:'');}).join('<br>');
+    } else {
+      itens=o.itemName+' (x'+o.quantity+')';
+    }
+    return '<tr>'+
+      '<td>'+o.userName+'</td>'+
+      '<td>'+itens+'</td>'+
+      '<td style="text-align:center">'+o.quantity+'</td>'+
+      '<td><span style="padding:3px 8px;border-radius:10px;font-size:11px;background:#f0f0f0">'+( statusLabel[o.status]||o.status)+'</span></td>'+
+      '<td>'+(o.deadline_delivery||'—')+'</td>'+
+      '<td>'+fd(o.createdAt)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  var now=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  var filterLabel=sflt==='all'?'Todos os status':(statusLabel[sflt]||sflt);
+
+  var win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+  <title>Relatório de Pedidos - Escola São Camilo</title>
+  <style>
+    body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#1a1a1a;font-size:13px}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #cc0000}
+    .header-left h1{margin:0;font-size:20px;color:#cc0000}
+    .header-left p{margin:4px 0 0;color:#666;font-size:12px}
+    .header-right{text-align:right;font-size:12px;color:#666}
+    .filtro{background:#f5f5f5;padding:8px 12px;border-radius:6px;margin-bottom:16px;font-size:12px}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th{background:#cc0000;color:white;padding:9px 10px;text-align:left;font-size:12px}
+    td{padding:8px 10px;border-bottom:1px solid #eee;vertical-align:top;font-size:12px}
+    tr:nth-child(even) td{background:#fafafa}
+    .total{margin-top:16px;text-align:right;font-size:12px;color:#666}
+    @media print{body{padding:0}.no-print{display:none}}
+  </style></head><body>
+  <div class="header">
+    <div class="header-left">
+      <h1>Escola São Camilo</h1>
+      <p>Relatório de Pedidos de Materiais</p>
+    </div>
+    <div class="header-right">
+      <div>Gerado em: ${now}</div>
+      <div>Filtro: ${filterLabel}</div>
+    </div>
+  </div>
+  <table>
+    <thead><tr><th>Solicitante</th><th>Itens</th><th>Qtd Total</th><th>Status</th><th>Prazo Entrega</th><th>Data</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="total">Total de pedidos: <strong>${list.length}</strong></div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`);
+  win.document.close();
+};
 
 function loadAdminOrders(){
   if(unsubAdmin)unsubAdmin();
