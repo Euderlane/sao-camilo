@@ -1,6 +1,9 @@
 [build]
   publish = "."
 
+[build.environment]
+  NETLIFY_DATABASE_MIGRATION_DISABLED = "true"
+
 [[headers]]
   for = "/api/*"
   [headers.values]
